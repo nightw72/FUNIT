@@ -1,0 +1,40 @@
+import torch
+from models.funit_model import FUNITModel
+from data.base_dataset import get_transform
+from PIL import Image
+
+def load_image(image_path, transform):
+    image = Image.open(image_path).convert('RGB')
+    image = transform(image)
+    return image.unsqueeze(0)
+
+def main():
+    # Load pre-trained FUNIT model
+    model_path = 'pretrained_models/funit_anime_genesis.pth'
+    config_path = 'configs/funit_anime.yaml'
+    output_image_path = 'output_face_front.png'
+    side_face_image_path = 'side_face.png'
+
+    # Initialize model
+    model = FUNITModel(config_path)
+    model.eval()
+    model.cuda()
+
+    # Load input image
+    transform = get_transform(config_path, grayscale=False)
+    image = load_image(side_face_image_path, transform)
+    image = image.cuda()
+
+    # Perform inference
+    with torch.no_grad():
+        outputs = model.sample({'image': image}, num_domains=1)
+        fake_image = outputs['image']
+        fake_image = (fake_image.cpu().numpy().transpose(0, 2, 3, 1) + 1) / 2.0 * 255.0
+        fake_image = fake_image.squeeze(0).astype('uint8')
+
+        # Save the output image
+        fake_image = Image.fromarray(fake_image)
+        fake_image.save(output_image_path)
+
+if __name__ == '__main__':
+    main()
